@@ -9,12 +9,16 @@ import os.path
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
-
+import sched, time
+from nsetools import Nse
+from pprint import pprint
+from nsepy import *
+import quandl
 
 
 DATABASE = 'test_database.db'  # database location
-
-
+quandl.ApiConfig.api_key = "niyGuVbtysUyWvT8Rx6Q"
+nse = Nse()
 # make a db connection
 def get_db():
     db = getattr(g, '_database', None)
@@ -40,7 +44,7 @@ def query_db(query, args=(), one=False):
 
 
 # insert a value into the db
-def insert_db(query, args=()):
+def execute_query_db(query, args=()):
     """ USED LIKE SO:
 			insert_db('insert into entries (title, text) values (?, ?)',[request.form['title'], request.form['text']])
 	"""
@@ -48,12 +52,6 @@ def insert_db(query, args=()):
     db.execute(query, args)
     db.commit()
 
-
-def update_db(query, args=()):
-
-    db = get_db()
-    db.execute(query, args)
-    db.commit()
 
 
 def validate_admin(func):
@@ -78,6 +76,7 @@ def validate_admin(func):
 
 
 def retrieve_option_chain_data(url):
+    print(time.time())
     Base_Url = (url)
 
     page = requests.get(Base_Url)
@@ -167,24 +166,63 @@ def retrieve_option_chain_data(url):
     #new_table_put.to_csv('BNF_OPT_CHAIN_PUT.csv')
     insert_current_oi_details_table(new_table_call, 'INSERT INTO PREVIOUS_DAY_OI_DETAILS(STRIKE_PRICE, CALL_OI, CALL_LTP) SELECT StrikePrice, OI, LTP FROM tmp')
     update_current_oi_details_table(new_table_put, 'UPDATE PREVIOUS_DAY_OI_DETAILS SET PUT_OI = (SELECT OI FROM tmp WHERE PREVIOUS_DAY_OI_DETAILS.STRIKE_PRICE = tmp.StrikePrice), PUT_LTP = (SELECT LTP FROM tmp WHERE PREVIOUS_DAY_OI_DETAILS.STRIKE_PRICE = tmp.StrikePrice)')
-
+    print(time.time())
 
 def insert_current_oi_details_table(new_table, query):
     db = get_db()
     new_table.to_sql('tmp', db, if_exists='replace')
-    insert_db('DELETE FROM PREVIOUS_DAY_OI_DETAILS')
-    insert_db(query)
+    execute_query_db('DELETE FROM PREVIOUS_DAY_OI_DETAILS')
+    execute_query_db(query)
 
 
 def update_current_oi_details_table(new_table, query):
     db = get_db()
     new_table.to_sql('tmp', db, if_exists='replace')
-    update_db(query)
+    execute_query_db(query)
 
 
 def removeSplChars(data):
     return re.sub('[^A-Za-z0-9 ]+', '', str(data))
 
+
+    # Base_Url = ('https://www.nseindia.com/live_market/dynaContent/live_watch/live_index_watch.htm')
+    #
+    # page = requests.get(Base_Url)
+    # Status_Code = page.status_code
+    # page_content = page.content
+    #
+    # soup = BeautifulSoup(page_content, 'html.parser')
+    # ##print(soup.prettify())
+    #
+    # tr_all = soup.find_all('tr')
+    #
+    # col_list = []
+    # bank_nifty_live_details = []
+    #
+    #
+    # try:
+    #     rowSize = len(tr_all)
+    #     rowCounter = 0
+    #     for tr in tr_all:
+    #         rowCounter +=1
+    #         if(rowCounter==1):
+    #             cols = tr.find_all('th')
+    #             for th in cols:
+    #                 col_head = th.text
+    #                 col_head_encoded = col_head.encode('utf8')
+    #                 col_list.append(col_head_encoded)
+    #         if (rowCounter == 14):
+    #             cols = tr.find_all('td')
+    #             for th in cols:
+    #                 col_head = th.text
+    #                 col_head_encoded = col_head.encode('utf8')
+    #                 bank_nifty_live_details.append(col_head_encoded)
+    # except:
+    #     print 'no thead'
+    #
+    #
+    # print col_list
+    # print bank_nifty_live_details
 
 
 
