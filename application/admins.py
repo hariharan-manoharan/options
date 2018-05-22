@@ -8,7 +8,8 @@ import json
 import cookielib
 
 s = sched.scheduler(time.time, time.sleep)
-
+expiry_date = ''
+current_day_oi_retreival_counter = 1
 
 @app.route('/admins/')
 @validate_admin
@@ -30,6 +31,8 @@ def admins():
     bnf_change = ''
     nf_ltp = ''
     nf_change = ''
+    vix_ltp = ''
+    vix_change = ''
 
     for data in datas:
         if data['name'] == 'NIFTY BANK':
@@ -38,20 +41,41 @@ def admins():
         if data['name'] == 'NIFTY 50':
             nf_ltp = data['lastPrice']
             nf_change = data['change']
+        if data['name'] == 'INDIA VIX':
+            vix_ltp = data['lastPrice']
+            vix_change = data['change']
 
-    return render_template('/admins/index.html', bnfltp = bnf_ltp, nfltp = nf_ltp, bnfchange = bnf_change, nfchange= nf_change )
 
+
+    return render_template('/admins/index.html', bnfltp = bnf_ltp, nfltp = nf_ltp, bnfchange = bnf_change, nfchange= nf_change, vix=vix_ltp, vixchange = vix_change )
+
+
+
+@app.route('/admins/collectoldoidetails/', methods=['GET','POST'])
+@validate_admin
+def collect_old_oi_details():
+
+    if request.method == 'POST':
+
+        expiry_date = request.form['expirydate']
+
+        url = 'https://www.nseindia.com/live_market/dynaContent/live_watch' \
+          '/option_chain/optionKeys.jsp?segmentLink=17&instrument=OPTIDX&symbol=BANKNIFTY&date='+request.form['expirydate']
+        #s.enter(10, 1, retrieve_option_chain_data, argument=(url,'previous'))
+        #s.run()
+        retrieve_option_chain_data(url,'previous')
+        flash("Successfully collected previous day OI details for Bank Nifty Expiry - "+request.form['expirydate'], 'success')
+        return redirect("/admins/")
 
 
 @app.route('/admins/schedule/', methods=['GET','POST'])
 @validate_admin
-def schedule_jobs():
+def collect_current_oi_details():
 
     if request.method == 'POST':
-
         url = 'https://www.nseindia.com/live_market/dynaContent/live_watch' \
-          '/option_chain/optionKeys.jsp?segmentLink=17&instrument=OPTIDX&symbol=BANKNIFTY&date='+request.form['expirydate']
-        s.enter(10, 1, retrieve_option_chain_data, argument=(url,))
-        s.run()
-        flash("Job Scheduled successfully for Bank Nifty Expiry - "+request.form['expirydate'], 'success')
+              '/option_chain/optionKeys.jsp?segmentLink=17&instrument=OPTIDX&symbol=BANKNIFTY&date=' + expiry_date
+        retrieve_option_chain_data(url, 'current', current_day_oi_retreival_counter)
+        flash("Current day OI details for Bank Nifty Expiry - " + request.form['expirydate'] + ' will be collected every 15 mins ', 'success')
         return redirect("/admins/")
+

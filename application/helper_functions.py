@@ -75,7 +75,7 @@ def validate_admin(func):
 
 
 
-def retrieve_option_chain_data(url):
+def retrieve_option_chain_data(url, type, count=1):
     print(time.time())
     Base_Url = (url)
 
@@ -164,8 +164,19 @@ def retrieve_option_chain_data(url):
     # print(new_table)
     #new_table_call.to_csv('BNF_OPT_CHAIN_CALL.csv')
     #new_table_put.to_csv('BNF_OPT_CHAIN_PUT.csv')
-    insert_current_oi_details_table(new_table_call, 'INSERT INTO PREVIOUS_DAY_OI_DETAILS(STRIKE_PRICE, CALL_OI, CALL_LTP) SELECT StrikePrice, OI, LTP FROM tmp')
-    update_current_oi_details_table(new_table_put, 'UPDATE PREVIOUS_DAY_OI_DETAILS SET PUT_OI = (SELECT OI FROM tmp WHERE PREVIOUS_DAY_OI_DETAILS.STRIKE_PRICE = tmp.StrikePrice), PUT_LTP = (SELECT LTP FROM tmp WHERE PREVIOUS_DAY_OI_DETAILS.STRIKE_PRICE = tmp.StrikePrice)')
+    if type == 'previous':
+        insert_current_oi_details_table(new_table_call, 'INSERT INTO PREVIOUS_DAY_OI_DETAILS(STRIKE_PRICE, CALL_OI, CALL_LTP) SELECT StrikePrice, OI, LTP FROM tmp')
+        insert_current_oi_details_table(new_table_call, 'INSERT INTO CURRENT_DAY_OI_DETAILS(STRIKE_PRICE) SELECT StrikePrice FROM tmp')
+        update_current_oi_details_table(new_table_put, 'UPDATE PREVIOUS_DAY_OI_DETAILS SET PUT_OI = (SELECT OI FROM tmp WHERE PREVIOUS_DAY_OI_DETAILS.STRIKE_PRICE = tmp.StrikePrice), PUT_LTP = (SELECT LTP FROM tmp WHERE PREVIOUS_DAY_OI_DETAILS.STRIKE_PRICE = tmp.StrikePrice)')
+    elif type == 'current':
+        update_current_oi_details_table(new_table_call,
+                                        'UPDATE CURRENT_DAY_OI_DETAILS SET '
+                                        'CALL_OI_'+str(count)+' = (SELECT OI FROM tmp WHERE CURRENT_DAY_OI_DETAILS.STRIKE_PRICE = tmp.StrikePrice), '
+                                        'CALL_LTP_'+str(count)+' = (SELECT LTP FROM tmp WHERE CURRENT_DAY_OI_DETAILS.STRIKE_PRICE = tmp.StrikePrice)')
+        update_current_oi_details_table(new_table_put,
+                                        'UPDATE CURRENT_DAY_OI_DETAILS SET '
+                                        'PUT_OI_'+str(count)+' = (SELECT OI FROM tmp WHERE CURRENT_DAY_OI_DETAILS.STRIKE_PRICE = tmp.StrikePrice), '
+                                        'PUT_LTP_'+str(count)+' = (SELECT LTP FROM tmp WHERE CURRENT_DAY_OI_DETAILS.STRIKE_PRICE = tmp.StrikePrice)')
     print(time.time())
 
 def insert_current_oi_details_table(new_table, query):
