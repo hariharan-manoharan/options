@@ -1,0 +1,39 @@
+{% extends "/admins/base_template.html" %}
+{% block title %}Bank Nifty Futures Details{% endblock %}
+{% block body %}
+<div class="container">
+    <div class="row">
+        <div class="span12">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th>{{ ftablehead[2] }}</th>
+                        <th>{{ ftablehead[5] }}</th>
+                        <th>{{ ftablehead[6] }}</th>
+                        <th>{{ ftablehead[7] }}</th>
+                        <th>{{ ftablehead[8] }}</th>
+                        <th>{{ ftablehead[9] }}</th>
+                        <th>{{ ftablehead[12] }}</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for fexpiry in fexpires %}
+                    <tr>
+                        <td>{{fexpiry[2]}}</td>
+                        <td>{{fexpiry[5]}}</td>
+                        <td>{{fexpiry[6]}}</td>
+                        <td>{{fexpiry[7]}}</td>
+                        <td>{{fexpiry[8]}}</td>
+                        <td>{{fexpiry[9]}}</td>
+                        <td>{{fexpiry[12]}}</td>
+                    </tr>
+                    {% endfor %}
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

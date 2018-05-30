@@ -1,0 +1,51 @@
+{% extends "/admins/base_template.html" %}
+{% block title %}Open Interest Details{% endblock %}
+{% block body %}
+<div class="container">
+     <div class="row">
+    <div class="span12">
+            <h3>Put Open Interest Details</h3>
+            <div class="span6">
+            <div class="widget-container fluid-height">
+                <div class="heading">
+                    <h5>Strike with Max OI - <b>{{ max_oi.strikePrice }} ({{ max_oi.maxOi}} contracts)</b></h5>
+                    <h5>Put Call Ratio - <b>{{ pcr }}</b></h5>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+            <div class="span6">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th>Strike Price</th>
+                            <th>Put LTP</th>
+                            <th>Put OI</th>
+                            <th>Put OI Change</th>
+                            <th>Put OI Change (%)</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for putoidata in putoidatas %}
+                        <tr>
+                            <td>{{putoidata.strikePrice}}</td>
+                            <td>{{putoidata.putLtp}}</td>
+                            <td>{{putoidata.putOi}}</td>
+                            <td>{{putoidata.putOiChange}}</td>
+                            {% if putoidata.putOiChangePerct|int < 0 %}
+                            <td><b><font color="red">{{putoidata.putOiChangePerct}}</font></b></td>
+                            {% else %}
+                            <td><b><font color="green">{{putoidata.putOiChangePerct}}</font></b></td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

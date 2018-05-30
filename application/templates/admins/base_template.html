@@ -1,4 +1,7 @@
 {% set navigation_items = [
+	('/admins/calloichange/', 'calloichange', ' Call OI Change Details'),
+    ('/admins/putoichange/', 'putoichange', 'Put OI Change Details'),
+	('/admins/bnffutures/', 'bnffutures', 'Futures Details'),
 	('/', 'logout', 'Logout'),
 ] -%}
 
@@ -7,7 +10,7 @@
 
 <html>
 	<head>
-		<meta http-equiv="refresh" content="5">
+		<!--meta http-equiv="refresh" content="5"-->
 		<link href="/static/fileinput.min.css" media="all" rel="stylesheet" type="text/css" />
 		<link href="/static/bootstrap.min.css" rel="stylesheet" />
 		<link href="/static/bootstrap-responsive.css" rel="stylesheet" />
@@ -28,6 +31,7 @@
 			h2 {
 				font-size: 26px;
 			}
+
 		</style>
 	</head>
 	<body>

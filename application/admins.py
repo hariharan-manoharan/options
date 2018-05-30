@@ -6,10 +6,16 @@ import sched, time
 import urllib2
 import json
 import cookielib
+import time
+import atexit
 
-s = sched.scheduler(time.time, time.sleep)
-expiry_date = ''
-current_day_oi_retreival_counter = 1
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+
+import logging
+logging.basicConfig()
+
+
 
 @app.route('/admins/')
 @validate_admin
@@ -25,6 +31,7 @@ def admins():
     opener = urllib2.build_opener()
     f = opener.open(req)
     json1 = json.loads(f.read())
+
 
     datas = json1['data']
     bnf_ltp = ''
@@ -51,31 +58,102 @@ def admins():
 
 
 
-@app.route('/admins/collectoldoidetails/', methods=['GET','POST'])
+@app.route('/admins/schedule/', methods=['GET','POST'])
 @validate_admin
 def collect_old_oi_details():
 
     if request.method == 'POST':
 
-        expiry_date = request.form['expirydate']
-
         url = 'https://www.nseindia.com/live_market/dynaContent/live_watch' \
           '/option_chain/optionKeys.jsp?segmentLink=17&instrument=OPTIDX&symbol=BANKNIFTY&date='+request.form['expirydate']
-        #s.enter(10, 1, retrieve_option_chain_data, argument=(url,'previous'))
-        #s.run()
-        retrieve_option_chain_data(url,'previous')
+
+        retrieve_old_option_chain_data(url)
         flash("Successfully collected previous day OI details for Bank Nifty Expiry - "+request.form['expirydate'], 'success')
         return redirect("/admins/")
 
 
-@app.route('/admins/schedule/', methods=['GET','POST'])
+scheduler = BackgroundScheduler()
+
+@app.route('/admins/collectoidetails/', methods=['GET','POST'])
 @validate_admin
 def collect_current_oi_details():
 
     if request.method == 'POST':
         url = 'https://www.nseindia.com/live_market/dynaContent/live_watch' \
-              '/option_chain/optionKeys.jsp?segmentLink=17&instrument=OPTIDX&symbol=BANKNIFTY&date=' + expiry_date
-        retrieve_option_chain_data(url, 'current', current_day_oi_retreival_counter)
+              '/option_chain/optionKeys.jsp?segmentLink=17&instrument=OPTIDX&symbol=BANKNIFTY&date=' + request.form['expirydate']
+
+
+        scheduler.start()
+        scheduler.add_job(
+            id='job1',
+            func=retrieve_current_option_chain_data,
+            args=[url],
+            trigger=IntervalTrigger(seconds=30))
+        # Shut down the scheduler when exiting the app
+        atexit.register(lambda: scheduler.shutdown())
+
+
         flash("Current day OI details for Bank Nifty Expiry - " + request.form['expirydate'] + ' will be collected every 15 mins ', 'success')
         return redirect("/admins/")
+
+
+@app.route('/admins/pausecollectoidetails/', methods=['GET','POST'])
+@validate_admin
+def pause_collect_current_oi_details():
+
+    if request.method == 'POST':
+
+        scheduler.pause()
+
+        flash('Paused collecting current day OI details for Bank Nifty', 'success')
+        return redirect("/admins/")
+
+@app.route('/admins/resumecollectoidetails/', methods=['GET','POST'])
+@validate_admin
+def resume_collect_current_oi_details():
+
+    if request.method == 'POST':
+
+        scheduler.resume()
+
+        flash('Resumed collecting current day OI details for Bank Nifty', 'success')
+        return redirect("/admins/")
+
+@app.route('/admins/calloichange/', methods=['GET'])
+@validate_admin
+def show_call_oi_details():
+
+    if request.method == 'GET':
+
+        call_datas = get_call_oi_change_details()
+
+        max_call_oi = get_max_oi("SELECT STRIKE_PRICE, CALL_OI FROM CURRENT_DAY_OI_DETAILS WHERE CAST(REPLACE(CALL_OI, ',', '') AS INT) = (SELECT MAX(CAST(REPLACE(CALL_OI, ',', '') AS INT)) FROM CURRENT_DAY_OI_DETAILS)")
+
+        pcr = calculate_pcr()
+
+        return render_template("/admins/calloichange.html", calloidatas = call_datas, max_oi = max_call_oi, pcr = pcr)
+
+@app.route('/admins/putoichange/', methods=['GET'])
+@validate_admin
+def show_put_oi_details():
+
+    if request.method == 'GET':
+
+        put_datas = get_put_oi_change_details()
+
+        max_put_oi = get_max_oi("SELECT STRIKE_PRICE, PUT_OI FROM CURRENT_DAY_OI_DETAILS WHERE CAST(REPLACE(PUT_OI, ',', '') AS INT) = (SELECT MAX(CAST(REPLACE(PUT_OI, ',', '') AS INT)) FROM CURRENT_DAY_OI_DETAILS)")
+
+        pcr = calculate_pcr()
+
+        return render_template("/admins/putoichange.html",  putoidatas= put_datas, max_oi = max_put_oi,  pcr = pcr)
+
+
+@app.route('/admins/bnffutures/', methods=['GET'])
+@validate_admin
+def show_futures_details():
+
+    head = get_future_datatable_head()
+    details = get_future_datatable_details()
+
+    return render_template("/admins/bnffutures.html", ftablehead=head, fexpires=details)
 

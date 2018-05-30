@@ -5,63 +5,82 @@
     <div class="row text-center">
 
         <div>
-            <strong>VIX - {{ vix }} ( {{ vixchange}} ) </strong>
+            {% if vixchange|int < 0 %}
+            <strong>VIX - <font color="red">{{ vix }} ( {{ vixchange}} )</font> </strong>
+            {% else %}
+            <strong>VIX - <font color="green">{{ vix }} ( {{ vixchange}} )</font> </strong>
+            {% endif %}
         </div>
-        <br>
-        <br>
-        <div>
-            <strong>Nifty - {{ nfltp }} ( {{ nfchange}} ) </strong>
-        </div>
-        <br>
-        <br>
-        <div>
-            <strong>Bank Nifty - {{ bnfltp }} ( {{ bnfchange }} )</strong>
-        </div>
-        <br>
-        <br>
-    </div>
-</div>
 
-<div class="row">
+        <div>
+            {% if nfchange|int < 0 %}
+            <strong>Nifty - <font color="red">{{ nfltp }} ( {{ nfchange}} )</font> </strong>
+            {% else %}
+            <strong>Nifty - <font color="green">{{ nfltp }} ( {{ nfchange}} )</font> </strong>
+            {% endif %}
+        </div>
+
+        <div>
+            {% if bnfchange|int < 0 %}
+            <strong>Bank Nifty - <font color="red">{{ bnfltp }} ( {{ bnfchange }} )</font></strong>
+            {% else %}
+            <strong>Bank Nifty -<font color="green">{{ bnfltp }} ( {{ bnfchange }} )</font></strong>
+            {% endif %}
+        </div>
+    <br>
+    </div>
     <div class="row text-center">
-        <form method="POST" action="/admins/collectoldoidetails/">
+        <form method="POST" action="/admins/schedule/">
             <fieldset>
                 <div>
                     <strong>Collect Previous Day OI Details</strong>
                 </div>
                 <br>
-                <br>
                 <div>
                     <span>Expiry Date</span>
                     <input type="text" class="input-large" name="expirydate" required/>
                 </div>
-                <br>
-                <br>
                 <div>
                     <input value="Go!" type="submit" class="btn btn-primary">
                 </div>
-                <br>
-                <br>
             </fieldset>
         </form>
     </div>
-</div>
-<div class="row">
     <div class="row text-center">
-        <form method="POST" action="/admins/schedule/">
+        <form method="POST" action="/admins/collectoidetails/">
             <fieldset>
                 <div>
                     <strong>Collect Current Day OI Details</strong>
                 </div>
                 <br>
-                <br>
                 <div>
-                    <input value="Go!" type="submit" class="btn btn-primary">
+                    <span>Expiry Date</span>
+                    <input type="text" class="input-large" name="expirydate" required/>
                 </div>
-                <br>
-                <br>
+
+                <div>
+                    <input value="Start!" type="submit" class="btn btn-primary">
+                </div>
+
             </fieldset>
         </form>
+    </div>
+    <div class="row text-center">
+        <form method="POST" action="/admins/pausecollectoidetails/">
+            <fieldset>
+                <div>
+                    <input value="Pause!" type="submit" class="btn btn-primary">
+                </div>
+
+            </fieldset>
+        </form>
+        <form method="POST" action="/admins/resumecollectoidetails/">
+            <fieldset>
+                <div>
+                    <input value="Resume!" type="submit" class="btn btn-primary">
+                </div>
+
+            </fieldset>
     </div>
 </div>
 {% with messages = get_flashed_messages(with_categories=true) %}
