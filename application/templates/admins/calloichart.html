@@ -1,0 +1,64 @@
+{% extends "/admins/base_template.html" %}
+{% block title %}Call OI Change Chart{% endblock %}
+{% block body %}
+{% for data in datas %}
+{% if data[0] |int >= bnf_ltp | int - 600 and data[0] |int <= bnf_ltp | int + 600 %}
+<div id="chart{{ data[0] | int}}"></div>
+{% endif %}
+{% endfor %}
+<script src="/static/d3.v5.min.js" charset="utf-8"></script>
+<script src="/static/c3.js"></script>
+
+{% for data in datas %}
+{% if data[0] |int >= bnf_ltp | int - 600 and data[0] |int <= bnf_ltp | int + 600 %}
+    <script>
+      var chart = c3.generate({
+      size: {
+        height: 400,
+        width: 600
+        },
+        title: {
+        text: '{{ data[0] | int}}'
+        },
+        bindto: '#chart{{ data[0] | int}}',
+        data: {
+          x : 'Time',
+          xFormat : '%H:%M:%S',
+          columns: [
+
+            ['Time',
+            {% for i in range(0, count|int) %}
+            {% if i != count|int - 1 %}
+            '{{ data[2][i] }}',
+            {% else %}
+            '{{ data[2][i] }}'
+            {% endif %}
+            {% endfor %}
+            ],
+            ['Open Interest Change',
+            {% for i in range(0, count|int) %}
+            {% if i != count|int - 1 %}
+            '{{ data[1][i] }}',
+            {% else %}
+            '{{ data[1][i] }}'
+            {% endif %}
+            {% endfor %}
+            ]
+          ]
+        },
+        axis : {
+          x : {
+            type : 'timeseries',
+            tick : {
+
+              format : "%H:%M"
+            }
+          }
+        }
+      });
+
+    </script>
+{% endif %}
+{% endfor %}
+{% endblock %}
+

@@ -15,6 +15,18 @@ from pprint import pprint
 from nsepy import *
 import quandl
 from decimal import Decimal
+from datetime import datetime
+from functools import wraps
+import sched, time
+import urllib2
+import json
+import cookielib
+import time
+import atexit
+from operator import is_not
+from functools import partial
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 
 import win32com.client as win32
 import shutil
@@ -169,9 +181,16 @@ def retrieve_old_option_chain_data(url):
 
 
     execute_query_db('DELETE FROM PREVIOUS_DAY_OI_DETAILS')
+    execute_query_db('DELETE FROM OTHERS')
+    execute_query_db('DELETE FROM CALL_OI_TRACK')
+    execute_query_db('DELETE FROM PUT_OI_TRACK')
     insert_current_oi_details_table(new_table_call, 'INSERT INTO PREVIOUS_DAY_OI_DETAILS(STRIKE_PRICE, CALL_OI, CALL_LTP) SELECT StrikePrice, OI, LTP FROM tmp')
     execute_query_db('DELETE FROM CURRENT_DAY_OI_DETAILS')
     insert_current_oi_details_table(new_table_call, 'INSERT INTO CURRENT_DAY_OI_DETAILS(STRIKE_PRICE) SELECT StrikePrice FROM tmp')
+    insert_current_oi_details_table(new_table_call,
+                                    'INSERT INTO CALL_OI_TRACK(STRIKE_PRICE) SELECT StrikePrice FROM tmp')
+    insert_current_oi_details_table(new_table_call,
+                                    'INSERT INTO PUT_OI_TRACK(STRIKE_PRICE) SELECT StrikePrice FROM tmp')
     update_current_oi_details_table(new_table_put, 'UPDATE PREVIOUS_DAY_OI_DETAILS SET PUT_OI = (SELECT OI FROM tmp WHERE PREVIOUS_DAY_OI_DETAILS.STRIKE_PRICE = tmp.StrikePrice), PUT_LTP = (SELECT LTP FROM tmp WHERE PREVIOUS_DAY_OI_DETAILS.STRIKE_PRICE = tmp.StrikePrice)')
 
     print(time.time())
@@ -327,11 +346,28 @@ def retrieve_current_option_chain_data(url):
                                         'CALL_OI = (SELECT OI FROM tmp WHERE CURRENT_DAY_OI_DETAILS.STRIKE_PRICE = tmp.StrikePrice), '
                                         'CALL_CHANGE_IN_OI = (SELECT ChnginOI FROM tmp WHERE CURRENT_DAY_OI_DETAILS.STRIKE_PRICE = tmp.StrikePrice),'
                                         'CALL_LTP = (SELECT LTP FROM tmp WHERE CURRENT_DAY_OI_DETAILS.STRIKE_PRICE = tmp.StrikePrice)')
+        timeStamp = str(datetime.now().strftime('%H:%M:%S'))
+        execute_query_db("INSERT INTO OTHERS(JOB_SCHEDULE_TIME) VALUES('"+timeStamp+"')")
+
+        count_in_db = query_db('SELECT MAX(JOB_SCHEDULE_COUNT) AS COUNT FROM OTHERS')
+        count = ''
+        for c in count_in_db:
+            count =  str(c[0])
+
+        update_current_oi_details_table(new_table_call,"UPDATE CALL_OI_TRACK SET "
+                         "VALUE_"+count+"=(SELECT ChnginOI FROM tmp WHERE CALL_OI_TRACK.STRIKE_PRICE = tmp.StrikePrice),"
+                         "TIME_"+count+"='"+timeStamp+"'")
+
+
         update_current_oi_details_table(new_table_put,
                                         'UPDATE CURRENT_DAY_OI_DETAILS SET '
                                         'PUT_OI = (SELECT OI FROM tmp WHERE CURRENT_DAY_OI_DETAILS.STRIKE_PRICE = tmp.StrikePrice), '
                                         'PUT_CHANGE_IN_OI = (SELECT ChnginOI FROM tmp WHERE CURRENT_DAY_OI_DETAILS.STRIKE_PRICE = tmp.StrikePrice), '
                                         'PUT_LTP = (SELECT LTP FROM tmp WHERE CURRENT_DAY_OI_DETAILS.STRIKE_PRICE = tmp.StrikePrice)')
+
+        update_current_oi_details_table(new_table_put,"UPDATE PUT_OI_TRACK SET "
+                         "VALUE_"+count+"=(SELECT ChnginOI FROM tmp WHERE PUT_OI_TRACK.STRIKE_PRICE = tmp.StrikePrice),"
+                         "TIME_"+count+"='"+timeStamp+"'")
         print(time.time())
 
 
@@ -349,13 +385,13 @@ def get_call_oi_change_details():
 
         holderDict = {}
         if '-' not in oidata:
-            holderDict['strikePrice'] = oidata[0].encode("utf-8")
-            holderDict['callLtp'] = oidata[1].encode("utf-8")
-            holderDict['callOi'] = oidata[2].encode("utf-8")
-            holderDict['callOiChange'] = oidata[3].encode("utf-8")
+            holderDict['strikePrice'] = oidata[0].encode("utf-8").replace(",", "")
+            holderDict['callLtp'] = oidata[1].encode("utf-8").replace(",", "")
+            holderDict['callOi'] = oidata[2].encode("utf-8").replace(",", "")
+            holderDict['callOiChange'] = oidata[3].encode("utf-8").replace(",", "")
 
-            callOi = oidata[2].encode("utf-8").replace(",", "")
-            callOiChange = oidata[3].encode("utf-8").replace(",", "")
+            callOi = oidata[2].encode("utf-8").replace(",", "").replace(",", "")
+            callOiChange = oidata[3].encode("utf-8").replace(",", "").replace(",", "")
 
             if callOiChange != callOi:
                 denominator = (Decimal(callOi) - Decimal(callOiChange))
@@ -382,14 +418,14 @@ def get_put_oi_change_details():
 
         holderDict = {}
         if '-' not in oidata:
-            holderDict['strikePrice'] = oidata[0].encode("utf-8")
-            holderDict['putLtp'] = oidata[1].encode("utf-8")
-            holderDict['putOi'] = oidata[2].encode("utf-8")
-            holderDict['putOiChange'] = oidata[3].encode("utf-8")
+            holderDict['strikePrice'] = oidata[0].encode("utf-8").replace(",", "")
+            holderDict['putLtp'] = oidata[1].encode("utf-8").replace(",", "")
+            holderDict['putOi'] = oidata[2].encode("utf-8").replace(",", "")
+            holderDict['putOiChange'] = oidata[3].encode("utf-8").replace(",", "")
 
 
-            putOi = oidata[2].encode("utf-8").replace(",", "")
-            putOiChange = oidata[3].encode("utf-8").replace(",", "")
+            putOi = oidata[2].encode("utf-8").replace(",", "").replace(",", "")
+            putOiChange = oidata[3].encode("utf-8").replace(",", "").replace(",", "")
 
             if putOiChange != putOi:
                 denominator = (Decimal(putOi) - Decimal(putOiChange))
@@ -493,3 +529,22 @@ def get_future_datatable_details():
         print 'no td'
 
     return index_futures_list
+
+
+def get_basic_details():
+    hdr = {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
+        'Accept-Encoding': 'none',
+        'Accept-Language': 'en-US,en;q=0.8',
+        'Connection': 'keep-alive'}
+    req = urllib2.Request("https://www.nseindia.com/homepage/Indices1.json", headers=hdr)
+    opener = urllib2.build_opener()
+    f = opener.open(req)
+    json1 = json.loads(f.read())
+
+
+    datas = json1['data']
+
+    return  datas

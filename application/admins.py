@@ -8,32 +8,21 @@ import json
 import cookielib
 import time
 import atexit
-
+from operator import is_not
+from functools import partial
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+import math
 
 import logging
 logging.basicConfig()
 
 
-
 @app.route('/admins/')
 @validate_admin
 def admins():
-    hdr = {
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
-        'Accept-Encoding': 'none',
-        'Accept-Language': 'en-US,en;q=0.8',
-        'Connection': 'keep-alive'}
-    req = urllib2.Request("https://www.nseindia.com/homepage/Indices1.json", headers=hdr)
-    opener = urllib2.build_opener()
-    f = opener.open(req)
-    json1 = json.loads(f.read())
+    datas = get_basic_details()
 
-
-    datas = json1['data']
     bnf_ltp = ''
     bnf_change = ''
     nf_ltp = ''
@@ -88,7 +77,7 @@ def collect_current_oi_details():
             id='job1',
             func=retrieve_current_option_chain_data,
             args=[url],
-            trigger=IntervalTrigger(seconds=30))
+            trigger=IntervalTrigger(minutes=1))
         # Shut down the scheduler when exiting the app
         atexit.register(lambda: scheduler.shutdown())
 
@@ -152,8 +141,102 @@ def show_put_oi_details():
 @validate_admin
 def show_futures_details():
 
+    oiDatas = query_db('SELECT * FROM CALL_OI_TRACK')
+
+    OIDATAS = []
+
+    for i in range(0,len(oiDatas)):
+        holderDict = []
+        if '-' not in oiDatas[i]:
+            holderDict.append(oiDatas[i])
+
     head = get_future_datatable_head()
     details = get_future_datatable_details()
 
     return render_template("/admins/bnffutures.html", ftablehead=head, fexpires=details)
+
+
+@app.route('/admins/calloichart/', methods=['GET'])
+@validate_admin
+def show_call_oichart():
+    datas = get_basic_details()
+
+    bnf_ltp = 0.00
+
+    for data in datas:
+        if data['name'] == 'NIFTY BANK':
+            bnf_ltp = Decimal(data['lastPrice'].encode("utf-8").replace(",", ""))
+            break
+
+    bnf_ltp = math.ceil(bnf_ltp/100)* 100
+
+    count_in_db = query_db('SELECT MAX(JOB_SCHEDULE_COUNT) AS COUNT FROM OTHERS')
+    datas = query_db('SELECT * FROM CALL_OI_TRACK')
+
+    final_data_list = []
+
+    for data in datas:
+        filtered_datas = filter(partial(is_not, None), data)
+        filtered_datas = [x.encode('utf-8').encode("utf-8").replace(",", "") for x in filtered_datas]
+        final_data_list.append(filtered_datas)
+
+
+    count = 0
+    for c in count_in_db:
+        count = c[0]
+
+    f_list = []
+
+    for data_list in final_data_list:
+        new_list = []
+        new_list.append(data_list[0])
+        new_list.append(data_list[1:count+1])
+        new_list.append(data_list[count+1 :count+count+1])
+        f_list.append(new_list)
+
+    return render_template("/admins/calloichart.html" ,datas = f_list, count =count, bnf_ltp = bnf_ltp)
+
+
+
+@app.route('/admins/putoichart/', methods=['GET'])
+@validate_admin
+def show_put_oichart():
+    datas = get_basic_details()
+
+    bnf_ltp = 0.00
+
+    for data in datas:
+        if data['name'] == 'NIFTY BANK':
+            bnf_ltp = Decimal(data['lastPrice'].encode("utf-8").replace(",", ""))
+            break
+
+    bnf_ltp = math.ceil(bnf_ltp/100)* 100
+
+    count_in_db = query_db('SELECT MAX(JOB_SCHEDULE_COUNT) AS COUNT FROM OTHERS')
+    datas = query_db('SELECT * FROM PUT_OI_TRACK')
+
+    final_data_list = []
+
+    for data in datas:
+        filtered_datas = filter(partial(is_not, None), data)
+        filtered_datas = [x.encode('utf-8').encode("utf-8").replace(",", "") for x in filtered_datas]
+        final_data_list.append(filtered_datas)
+
+
+    count = 0
+    for c in count_in_db:
+        count = c[0]
+
+    f_list = []
+
+    for data_list in final_data_list:
+        new_list = []
+        new_list.append(data_list[0])
+        new_list.append(data_list[1:count+1])
+        new_list.append(data_list[count+1 :count+count+1])
+        f_list.append(new_list)
+
+
+
+    return render_template("/admins/calloichart.html" ,datas = f_list, count =count, bnf_ltp = bnf_ltp)
 
