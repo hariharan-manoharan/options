@@ -77,12 +77,12 @@ def collect_current_oi_details():
             id='job1',
             func=retrieve_current_option_chain_data,
             args=[url],
-            trigger=IntervalTrigger(minutes=1))
+            trigger=IntervalTrigger(minutes=2))
         # Shut down the scheduler when exiting the app
         atexit.register(lambda: scheduler.shutdown())
 
 
-        flash("Current day OI details for Bank Nifty Expiry - " + request.form['expirydate'] + ' will be collected every 15 mins ', 'success')
+        flash("Current day OI details for Bank Nifty Expiry - " + request.form['expirydate'] + ' will be collected every 2 mins ', 'success')
         return redirect("/admins/")
 
 

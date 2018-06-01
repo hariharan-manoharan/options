@@ -8,14 +8,14 @@
 {% endfor %}
 <script src="/static/d3.v5.min.js" charset="utf-8"></script>
 <script src="/static/c3.js"></script>
-
+<link href="/static/c3.min.css" rel="stylesheet" type="text/css">
 {% for data in datas %}
 {% if data[0] |int >= bnf_ltp | int - 600 and data[0] |int <= bnf_ltp | int + 600 %}
     <script>
       var chart = c3.generate({
       size: {
         height: 400,
-        width: 600
+        width: 1000
         },
         title: {
         text: '{{ data[0] | int}}'
