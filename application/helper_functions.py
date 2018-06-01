@@ -354,9 +354,18 @@ def retrieve_current_option_chain_data(url):
         for c in count_in_db:
             count =  str(c[0])
 
+        datas = get_basic_details()
+        bnf_ltp = ''
+
+        for data in datas:
+            if data['name'] == 'NIFTY BANK':
+                bnf_ltp = data['lastPrice'].encode("utf-8").replace(",", "")
+                break
+
         update_current_oi_details_table(new_table_call,"UPDATE CALL_OI_TRACK SET "
                          "VALUE_"+count+"=(SELECT ChnginOI FROM tmp WHERE CALL_OI_TRACK.STRIKE_PRICE = tmp.StrikePrice),"
-                         "TIME_"+count+"='"+timeStamp+"'")
+                         "TIME_"+count+"='"+timeStamp+"', "
+                         "BNF_" + count + "='" + bnf_ltp + "'")
 
 
         update_current_oi_details_table(new_table_put,
@@ -367,7 +376,8 @@ def retrieve_current_option_chain_data(url):
 
         update_current_oi_details_table(new_table_put,"UPDATE PUT_OI_TRACK SET "
                          "VALUE_"+count+"=(SELECT ChnginOI FROM tmp WHERE PUT_OI_TRACK.STRIKE_PRICE = tmp.StrikePrice),"
-                         "TIME_"+count+"='"+timeStamp+"'")
+                         "TIME_"+count+"='"+timeStamp+"', "
+                         "BNF_" + count + "='" + bnf_ltp + "'")
         print(time.time())
 
 

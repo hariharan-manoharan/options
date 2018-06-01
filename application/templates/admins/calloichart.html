@@ -47,18 +47,44 @@
             '{{ data[1][i] }}'
             {% endif %}
             {% endfor %}
+            ],
+            ['Bank Nifty',
+            {% for i in range(0, count|int) %}
+            {% if i != count|int - 1 %}
+            '{{ data[3][i] }}',
+            {% else %}
+            '{{ data[3][i] }}'
+            {% endif %}
+            {% endfor %}
             ]
-          ]
-        },
-        axis : {
-          x : {
-            type : 'timeseries',
-            tick : {
-
-              format : "%H:%M"
-            }
-          }
+          ],
+          axes: {
+                'Bank Nifty': 'y2'
+            },
+            },
+                axis: {
+                    x: {
+                        type: 'timeseries',
+                        tick: {
+                            format: '%H:%M'
+                        }
+                    },
+                    y: {
+                        label: {
+                            text: 'Open Interest Change',
+                            position: 'outer-middle'
+                        }
+                    },
+                    y2: {
+                        show: true,
+                        label: {
+                            text: 'Bank Nifty',
+                            position: 'outer-middle'
+                    }
+                }
         }
+
+
       });
 
     </script>

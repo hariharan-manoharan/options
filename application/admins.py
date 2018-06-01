@@ -77,12 +77,12 @@ def collect_current_oi_details():
             id='job1',
             func=retrieve_current_option_chain_data,
             args=[url],
-            trigger=IntervalTrigger(minutes=2))
+            trigger=IntervalTrigger(minutes=1))
         # Shut down the scheduler when exiting the app
         atexit.register(lambda: scheduler.shutdown())
 
 
-        flash("Current day OI details for Bank Nifty Expiry - " + request.form['expirydate'] + ' will be collected every 2 mins ', 'success')
+        flash("Current day OI details for Bank Nifty Expiry - " + request.form['expirydate'] + ' will be collected every 5 mins ', 'success')
         return redirect("/admins/")
 
 
@@ -192,6 +192,7 @@ def show_call_oichart():
         new_list.append(data_list[0])
         new_list.append(data_list[1:count+1])
         new_list.append(data_list[count+1 :count+count+1])
+        new_list.append(data_list[count + count + 1 : count + count + count + 1])
         f_list.append(new_list)
 
     return render_template("/admins/calloichart.html" ,datas = f_list, count =count, bnf_ltp = bnf_ltp)
@@ -234,9 +235,10 @@ def show_put_oichart():
         new_list.append(data_list[0])
         new_list.append(data_list[1:count+1])
         new_list.append(data_list[count+1 :count+count+1])
+        new_list.append(data_list[count + count + 1: count + count + count + 1])
         f_list.append(new_list)
 
 
 
-    return render_template("/admins/calloichart.html" ,datas = f_list, count =count, bnf_ltp = bnf_ltp)
+    return render_template("/admins/putoichart.html" ,datas = f_list, count =count, bnf_ltp = bnf_ltp)
 
