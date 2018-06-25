@@ -27,13 +27,16 @@ from operator import is_not
 from functools import partial
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-
+from ConfigReader import readConfig
 import win32com.client as win32
 import shutil
-
+import way2sms
+from twilio.rest import Client
 
 DATABASE = 'test_database.db'  # database location
-quandl.ApiConfig.api_key = "niyGuVbtysUyWvT8Rx6Q"
+
+config = readConfig()
+
 nse = Nse()
 # make a db connection
 def get_db():
@@ -363,7 +366,7 @@ def retrieve_current_option_chain_data(url):
                 break
 
         update_current_oi_details_table(new_table_call,"UPDATE CALL_OI_TRACK SET "
-                         "VALUE_"+count+"=(SELECT ChnginOI FROM tmp WHERE CALL_OI_TRACK.STRIKE_PRICE = tmp.StrikePrice),"
+                         "VALUE_"+count+"=(SELECT OI FROM tmp WHERE CALL_OI_TRACK.STRIKE_PRICE = tmp.StrikePrice),"
                          "TIME_"+count+"='"+timeStamp+"', "
                          "BNF_" + count + "='" + bnf_ltp + "'")
 
@@ -375,9 +378,13 @@ def retrieve_current_option_chain_data(url):
                                         'PUT_LTP = (SELECT LTP FROM tmp WHERE CURRENT_DAY_OI_DETAILS.STRIKE_PRICE = tmp.StrikePrice)')
 
         update_current_oi_details_table(new_table_put,"UPDATE PUT_OI_TRACK SET "
-                         "VALUE_"+count+"=(SELECT ChnginOI FROM tmp WHERE PUT_OI_TRACK.STRIKE_PRICE = tmp.StrikePrice),"
+                         "VALUE_"+count+"=(SELECT OI FROM tmp WHERE PUT_OI_TRACK.STRIKE_PRICE = tmp.StrikePrice),"
                          "TIME_"+count+"='"+timeStamp+"', "
                          "BNF_" + count + "='" + bnf_ltp + "'")
+
+        if int(count)!=1:
+            send_oi_change_strikes_msg(count,bnf_ltp)
+
         print(time.time())
 
 
@@ -558,3 +565,142 @@ def get_basic_details():
     datas = json1['data']
 
     return  datas
+
+
+def send_oi_change_strikes_msg(count, bnf_spot):
+
+    upper_threshold = 100000
+    lower_threshold = -100000
+    bnf_spot = count_in_db = query_db(
+        "SELECT BNF_" + str(count) + ",TIME_" + str(count) + " FROM CALL_OI_TRACK WHERE STRIKE_PRICE='26500.00'")
+    call_oi_decrease = get_oi_mg_details("SELECT STRIKE_PRICE, (CAST(REPLACE(VALUE_"+str(int(count))+", ',', '') AS INT) - CAST(REPLACE(VALUE_"+str(int(count)-1)+", ',', '') AS INT)) AS CHANGE FROM CALL_OI_TRACK ORDER BY CHANGE")
+    call_oi_increase = get_oi_mg_details("SELECT STRIKE_PRICE, (CAST(REPLACE(VALUE_"+str(int(count))+", ',', '') AS INT) - CAST(REPLACE(VALUE_"+str(int(count)-1)+", ',', '') AS INT)) AS CHANGE FROM CALL_OI_TRACK ORDER BY CHANGE DESC")
+    put_oi_decrease = get_oi_mg_details("SELECT STRIKE_PRICE, (CAST(REPLACE(VALUE_"+str(int(count))+", ',', '') AS INT) - CAST(REPLACE(VALUE_"+str(int(count)-1)+", ',', '') AS INT)) AS CHANGE FROM PUT_OI_TRACK ORDER BY CHANGE")
+    put_oi_increase = get_oi_mg_details("SELECT STRIKE_PRICE, (CAST(REPLACE(VALUE_"+str(int(count))+", ',', '') AS INT) - CAST(REPLACE(VALUE_"+str(int(count)-1)+", ',', '') AS INT)) AS CHANGE FROM PUT_OI_TRACK ORDER BY CHANGE DESC")
+
+    a = False
+    b = False
+    c = False
+    d = False
+
+    bnf_s = 0
+    time_ = ''
+    for chg in bnf_spot:
+        bnf_s = chg[0]
+        time_ = chg[1]
+
+    message = "@" + time_ + " Spot - " + str(bnf_s) + "\n"
+    message += "Call\n"
+    message += "Down\n"
+    for i in range(0,2):
+        if int(call_oi_decrease[i]['change']) < lower_threshold:
+            message += str(int(Decimal(call_oi_decrease[i]['strikePrice'])))+" "+str(call_oi_decrease[i]['change'])+"\n"
+            a = True
+    if not a:
+        message += "None\n"
+    message += "Up\n"
+    for i in range(0, 2):
+        if int(call_oi_increase[i]['change']) > upper_threshold:
+            message +=str(int(Decimal(call_oi_increase[i]['strikePrice'])))+" "+str(call_oi_increase[i]['change'])+"\n"
+            b = True
+    if not b:
+        message += "None\n"
+    message += "Put\n"
+    message += "Down\n"
+    for i in range(0, 2):
+        if int(put_oi_decrease[i]['change']) < lower_threshold:
+            message += str(int(Decimal(put_oi_decrease[i]['strikePrice']))) + " "+str(put_oi_decrease[i]['change'])+"\n"
+            c = True
+    if not c:
+        message += "None\n"
+    message += "Up\n"
+    for i in range(0, 2):
+        if int(put_oi_increase[i]['change']) > upper_threshold:
+            message += str(int(Decimal(put_oi_increase[i]['strikePrice']))) + " "+str(put_oi_increase[i]['change'])+"\n"
+            d = True
+    if not d:
+        message += "None\n"
+    if a or b or c or d:
+        q = way2sms.sms(config.get('username'), config.get('password'))
+        if not q.send(config.get('username'), message):
+            print('Message not sent')
+        print('Total messages sent today - '+ str(q.msgSentToday()))
+        q.logout()
+
+
+def get_oi_mg_details(query):
+    datas = query_db(query)
+
+    OIDATAS = []
+
+    for i in range(0,2):
+            holderDict = {}
+            holderDict['strikePrice'] = str(datas[i][0])
+            holderDict['change'] = str(datas[i][1])
+            OIDATAS.append(holderDict)
+
+    return OIDATAS
+
+
+def test():
+
+    for count in range(2,270):
+        upper_threshold = 100000
+        lower_threshold = -100000
+        bnf_spot = count_in_db = query_db("SELECT BNF_"+str(count)+",TIME_" + str(count) + " FROM CALL_OI_TRACK WHERE STRIKE_PRICE='26500.00'")
+        call_oi_decrease = get_oi_mg_details("SELECT STRIKE_PRICE, (CAST(REPLACE(VALUE_"+str(count)+", ',', '') AS INT) - CAST(REPLACE(VALUE_"+str(count-1)+", ',', '') AS INT)) AS CHANGE FROM CALL_OI_TRACK ORDER BY CHANGE")
+        call_oi_increase = get_oi_mg_details("SELECT STRIKE_PRICE, (CAST(REPLACE(VALUE_"+str(count)+", ',', '') AS INT) - CAST(REPLACE(VALUE_"+str(count-1)+", ',', '') AS INT)) AS CHANGE FROM CALL_OI_TRACK ORDER BY CHANGE DESC")
+        put_oi_decrease = get_oi_mg_details("SELECT STRIKE_PRICE, (CAST(REPLACE(VALUE_"+str(count)+", ',', '') AS INT) - CAST(REPLACE(VALUE_"+str(count-1)+", ',', '') AS INT)) AS CHANGE FROM PUT_OI_TRACK ORDER BY CHANGE")
+        put_oi_increase = get_oi_mg_details("SELECT STRIKE_PRICE, (CAST(REPLACE(VALUE_"+str(count)+", ',', '') AS INT) - CAST(REPLACE(VALUE_"+str(count-1)+", ',', '') AS INT)) AS CHANGE FROM PUT_OI_TRACK ORDER BY CHANGE DESC")
+
+        a = False
+        b = False
+        c = False
+        d = False
+
+        bnf_s = 0
+        time_ = ''
+        for chg in bnf_spot:
+            bnf_s = chg[0]
+            time_ = chg[1]
+
+
+        message = "@"+time_+" Spot - "+str(bnf_s)+"\n"
+        message += "Call\n"
+        message += "Down\n"
+        for i in range(0,2):
+            if int(call_oi_decrease[i]['change']) < lower_threshold:
+                message += str(int(Decimal(call_oi_decrease[i]['strikePrice'])))+" "+str(call_oi_decrease[i]['change'])+"\n"
+                a = True
+        if not a:
+            message += "None\n"
+        message += "Up\n"
+        for i in range(0, 2):
+            if int(call_oi_increase[i]['change']) > upper_threshold:
+                message +=str(int(Decimal(call_oi_increase[i]['strikePrice'])))+" "+str(call_oi_increase[i]['change'])+"\n"
+                b = True
+        if not b:
+            message += "None\n"
+        message += "Put\n"
+        message += "Down\n"
+        for i in range(0, 2):
+            if int(put_oi_decrease[i]['change']) < lower_threshold:
+                message += str(int(Decimal(put_oi_decrease[i]['strikePrice']))) + " "+str(put_oi_decrease[i]['change'])+"\n"
+                c = True
+        if not c:
+            message += "None\n"
+        message += "Up\n"
+        for i in range(0, 2):
+            if int(put_oi_increase[i]['change']) > upper_threshold:
+                message += str(int(Decimal(put_oi_increase[i]['strikePrice']))) + " "+str(put_oi_increase[i]['change'])+"\n"
+                d = True
+        if not d:
+            message += "None\n"
+        if a or b or c or d:
+            print message
+        if a or b or c or d:
+            q = way2sms.sms(config.get('username'), config.get('password'))
+            if not q.send(config.get('username'), message):
+                print('Message not sent')
+            print('Total messages sent today - ' + str(q.msgSentToday()))
+            q.logout()

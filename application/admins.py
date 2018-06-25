@@ -41,8 +41,7 @@ def admins():
             vix_ltp = data['lastPrice']
             vix_change = data['change']
 
-
-
+   # test()
     return render_template('/admins/index.html', bnfltp = bnf_ltp, nfltp = nf_ltp, bnfchange = bnf_change, nfchange= nf_change, vix=vix_ltp, vixchange = vix_change )
 
 

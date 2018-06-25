@@ -2,7 +2,7 @@
 {% block title %}Call OI Change Chart{% endblock %}
 {% block body %}
 {% for data in datas %}
-{% if data[0] |int >= bnf_ltp | int - 600 and data[0] |int <= bnf_ltp | int + 600 %}
+{% if data[0] |int >= bnf_ltp | int - 1000 and data[0] |int <= bnf_ltp | int + 1000 %}
 <div id="chart{{ data[0] | int}}"></div>
 {% endif %}
 {% endfor %}
@@ -11,7 +11,7 @@
 <link href="/static/c3.min.css" rel="stylesheet" type="text/css">
 
 {% for data in datas %}
-{% if data[0] |int >= bnf_ltp | int - 600 and data[0] |int <= bnf_ltp | int + 600 %}
+{% if data[0] |int >= bnf_ltp | int - 1000 and data[0] |int <= bnf_ltp | int + 1000 %}
     <script>
       var chart = c3.generate({
       size: {
@@ -39,7 +39,7 @@
             {% endif %}
             {% endfor %}
             ],
-            ['Open Interest Change',
+            ['Open Interest',
             {% for i in range(0, count|int) %}
             {% if i != count|int - 1 %}
             '{{ data[1][i] }}',
@@ -71,7 +71,7 @@
                     },
                     y: {
                         label: {
-                            text: 'Open Interest Change',
+                            text: 'Open Interest',
                             position: 'outer-middle'
                         }
                     },
